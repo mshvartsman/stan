@@ -1,24 +1,21 @@
 #ifndef STAN_MCMC_HMC_HAMILTONIANS_UNIT_E_METRIC_HPP
 #define STAN_MCMC_HMC_HAMILTONIANS_UNIT_E_METRIC_HPP
 
+#include <stan/mcmc/hmc/hamiltonians/base_hamiltonian.hpp>
+#include <stan/mcmc/hmc/hamiltonians/unit_e_point.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <boost/random/normal_distribution.hpp>
 
-#include <stan/mcmc/hmc/hamiltonians/base_hamiltonian.hpp>
-#include <stan/mcmc/hmc/hamiltonians/unit_e_point.hpp>
-
 namespace stan {
-
   namespace mcmc {
 
     // Euclidean manifold with unit metric
-    template <typename M, typename BaseRNG>
-    class unit_e_metric : public base_hamiltonian<M, unit_e_point, BaseRNG> {
+    template <class Model, class BaseRNG>
+    class unit_e_metric
+      : public base_hamiltonian<Model, unit_e_point, BaseRNG> {
     public:
-      unit_e_metric(M& m, std::ostream* e)
-        : base_hamiltonian<M, unit_e_point, BaseRNG>(m, e) {}
-
-      ~unit_e_metric() {}
+      explicit unit_e_metric(const Model& model)
+        : base_hamiltonian<Model, unit_e_point, BaseRNG>(model) {}
 
       double T(unit_e_point& z) {
         return 0.5 * z.p.squaredNorm();
@@ -32,15 +29,27 @@ namespace stan {
         return this->V(z);
       }
 
-      const Eigen::VectorXd dtau_dq(unit_e_point& z) {
+      double dG_dt(unit_e_point& z,
+                   interface_callbacks::writer::base_writer& info_writer,
+                   interface_callbacks::writer::base_writer& error_writer) {
+        return 2 * T(z) - z.q.dot(z.g);
+      }
+
+      Eigen::VectorXd dtau_dq(
+        unit_e_point& z,
+        interface_callbacks::writer::base_writer& info_writer,
+        interface_callbacks::writer::base_writer& error_writer) {
         return Eigen::VectorXd::Zero(this->model_.num_params_r());
       }
 
-      const Eigen::VectorXd dtau_dp(unit_e_point& z) {
+      Eigen::VectorXd dtau_dp(unit_e_point& z) {
         return z.p;
       }
 
-      const Eigen::VectorXd dphi_dq(unit_e_point& z) {
+      Eigen::VectorXd dphi_dq(
+        unit_e_point& z,
+        interface_callbacks::writer::base_writer& info_writer,
+        interface_callbacks::writer::base_writer& error_writer) {
         return z.g;
       }
 
@@ -54,7 +63,5 @@ namespace stan {
     };
 
   }  // mcmc
-
 }  // stan
-
 #endif

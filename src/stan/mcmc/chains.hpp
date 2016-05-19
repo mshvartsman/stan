@@ -1,6 +1,13 @@
 #ifndef STAN_MCMC_CHAINS_HPP
 #define STAN_MCMC_CHAINS_HPP
 
+#include <stan/io/stan_csv_reader.hpp>
+#include <stan/math/prim/mat/fun/variance.hpp>
+#include <stan/math/prim/arr/meta/index_type.hpp>
+#include <stan/math/prim/mat/meta/index_type.hpp>
+#include <stan/math/prim/scal/meta/index_type.hpp>
+#include <stan/math/prim/mat/fun/autocorrelation.hpp>
+#include <stan/math/prim/mat/fun/autocovariance.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/accumulators/statistics/mean.hpp>
@@ -9,18 +16,8 @@
 #include <boost/accumulators/statistics/variance.hpp>
 #include <boost/accumulators/statistics/covariance.hpp>
 #include <boost/accumulators/statistics/variates/covariate.hpp>
-
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/random/additive_combine.hpp>
-
-#include <stan/io/stan_csv_reader.hpp>
-#include <stan/math/prim/mat/fun/variance.hpp>
-#include <stan/math/prim/arr/meta/index_type.hpp>
-#include <stan/math/prim/mat/meta/index_type.hpp>
-#include <stan/math/prim/scal/meta/index_type.hpp>
-#include <stan/math/prim/mat/fun/autocorrelation.hpp>
-#include <stan/math/prim/mat/fun/autocovariance.hpp>
-
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -30,11 +27,9 @@
 #include <sstream>
 #include <utility>
 #include <vector>
-#include <fstream>
 #include <cstdlib>
 
 namespace stan {
-
   namespace mcmc {
     using Eigen::Dynamic;
 
@@ -52,7 +47,7 @@ namespace stan {
      *
      * <p><b>Storage Order</b>: Storage is column/last-index major.
      */
-    template <typename RNG = boost::random::ecuyer1988>
+    template <class RNG = boost::random::ecuyer1988>
     class chains {
     private:
       Eigen::Matrix<std::string, Dynamic, 1> param_names_;
@@ -74,9 +69,10 @@ namespace stan {
 
 
       static double covariance(const Eigen::VectorXd& x,
-                               const Eigen::VectorXd& y) {
-        if (x.rows() != y.rows())
-          std::cerr << "warning: covariance of different length chains";
+                               const Eigen::VectorXd& y,
+                               std::ostream* err = 0) {
+        if (x.rows() != y.rows() && err)
+          *err << "warning: covariance of different length chains";
         using boost::accumulators::accumulator_set;
         using boost::accumulators::stats;
         using boost::accumulators::tag::variance;
@@ -93,9 +89,10 @@ namespace stan {
       }
 
       static double correlation(const Eigen::VectorXd& x,
-                                const Eigen::VectorXd& y) {
-        if (x.rows() != y.rows())
-          std::cerr << "warning: covariance of different length chains";
+                                const Eigen::VectorXd& y,
+                                std::ostream* err = 0) {
+        if (x.rows() != y.rows() && err)
+          *err << "warning: covariance of different length chains";
         using boost::accumulators::accumulator_set;
         using boost::accumulators::stats;
         using boost::accumulators::tag::variance;
@@ -192,7 +189,7 @@ namespace stan {
         std::vector<double> sample(x.size());
         for (int i = 0; i < x.size(); i++)
           sample[i] = x(i);
-        stan::prob::autocorrelation(sample, ac);
+        stan::math::autocorrelation(sample, ac);
 
         Eigen::VectorXd ac2(ac.size());
         for (idx_t i = 0; i < ac.size(); i++)
@@ -209,7 +206,7 @@ namespace stan {
         std::vector<double> sample(x.size());
         for (int i = 0; i < x.size(); i++)
           sample[i] = x(i);
-        stan::prob::autocovariance(sample, ac);
+        stan::math::autocovariance(sample, ac);
 
         Eigen::VectorXd ac2(ac.size());
         for (idx_t i = 0; i < ac.size(); i++)
